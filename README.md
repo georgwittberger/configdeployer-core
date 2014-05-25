@@ -26,10 +26,11 @@ You will get a new sub-directory named `target` which contains the binary JAR fi
 
 To use the ConfigDeployer framework in your own Java project you could...
 
-- Manually add the binary JAR file "configdeployer-core-VERSION.jar" to the classpath of your project.
+- Manually add the binary JAR file `configdeployer-core-VERSION.jar` to the classpath of your project.
 - Install the artifact in your Maven repository and use it as a dependency in your POM:
   1. Open a terminal, navigate to the directory where the JAR file resides and execute the following command: `mvn install:install-file -Dfile=configdeployer-core-VERSION.jar`
   2. Add the artifact as a dependency to your POM:
+
     <dependency>
       <groupId>com.configdeployer</groupId>
       <artifactId>configdeployer-core</artifactId>
@@ -61,7 +62,7 @@ Please refer to the documentation for more details on the profile structure: `/s
 Deploying a profile
 -------------------
 
-Use the `ProfileDeployer` class to roll-out the configuration:
+You can use the `ProfileDeployer` class in conjunction with the `InputStreamProvider` implementations to roll-out the configuration:
 
     InputStreamProvider inputStreamProvider = new FileInputStreamProvider(new File("myprofile.xml"));
     try {
