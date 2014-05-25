@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema targetNamespace="http://configdeployer.com/profile" elementFormDefault="qualified" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://configdeployer.com/profile">
+
+    <annotation>
+        <documentation>XML schema for the ConfigDeployer profile</documentation>
+    </annotation>
+    <element name="config-profile">
+        <annotation>
+            <documentation>Definition of a configuration profile</documentation>
+        </annotation>
+        <complexType>
+            <sequence>
+                <element name="properties-files" maxOccurs="1" minOccurs="0">
+                    <annotation>
+                        <documentation>Group of properties files to operate on</documentation>
+                    </annotation>
+                    <complexType>
+                        <sequence>
+                            <element name="properties-file" type="tns:properties-file" maxOccurs="unbounded"
+                                minOccurs="1">
+                                <annotation>
+                                    <documentation>List of properties files to operate on</documentation>
+                                </annotation>
+                            </element>
+                        </sequence>
+                    </complexType>
+                </element>
+                <element name="databases" maxOccurs="1" minOccurs="0">
+                    <annotation>
+                        <documentation>Group of databases to operate on</documentation>
+                    </annotation>
+                    <complexType>
+                        <sequence>
+                            <element name="database" type="tns:database" maxOccurs="unbounded" minOccurs="1">
+                                <annotation>
+                                    <documentation>List of databases to operate on</documentation>
+                                </annotation>
+                            </element>
+                        </sequence>
+                    </complexType>
+                </element>
+            </sequence>
+            <attribute name="name" type="string" use="required">
+                <annotation>
+                    <documentation>Name of the profile</documentation>
+                </annotation>
+            </attribute>
+            <attribute name="description" type="string" use="optional">
+                <annotation>
+                    <documentation>Description of the profile</documentation>
+                </annotation>
+            </attribute>
+            <attribute name="version" type="string" use="required">
+                <annotation>
+                    <documentation>Version of the profile</documentation>
+                </annotation>
+            </attribute>
+        </complexType>
+    </element>
+
+    <complexType name="properties-file">
+        <sequence>
+            <element name="entry" type="tns:properties-entry" maxOccurs="unbounded" minOccurs="0">
+                <annotation>
+                    <documentation>List of entries to add, modify or delete within the properties file</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="location" type="string" use="required">
+            <annotation>
+                <documentation>Location of the properties file (e.g. /etc/myapp/config.properties)</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="operation" type="tns:properties-file-operation" use="optional">
+            <annotation>
+                <documentation>Operation to perform for the properties file</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <complexType name="properties-entry">
+        <sequence>
+            <element name="condition" maxOccurs="unbounded" minOccurs="0" type="tns:properties-entry-condition">
+                <annotation>
+                    <documentation>List of conditions that must be satisfied to apply this configuration</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="operation" type="tns:properties-entry-operation" use="required">
+            <annotation>
+                <documentation>Operation to perform for the properties entry</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="key" type="string" use="required">
+            <annotation>
+                <documentation>Properties key to add, modify or delete</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value" type="string" use="optional">
+            <annotation>
+                <documentation>Value to set for the properties entry or the new key in a RENAME operation</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="comment" type="string" use="optional">
+            <annotation>
+                <documentation>Comment for the properties entry</documentation>
+            </annotation></attribute>
+    </complexType>
+
+    <complexType name="properties-entry-condition">
+        <attribute name="value-equals" type="string" use="optional">
+            <annotation>
+                <documentation>Value of the current properties entry must equal this string (case-sensitive)
+                </documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value-contains" type="string" use="optional">
+            <annotation>
+                <documentation>Value of the current properties entry must contain this string (case-sensitive)
+                </documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value-matches" type="string" use="optional">
+            <annotation>
+                <documentation>Value of the current properties entry must match this regular expression</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value-not-equals" type="string" use="optional">
+            <annotation>
+                <documentation>Value of the current properties entry must not equal this string (case-sensitive)
+                </documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value-not-contains" type="string" use="optional">
+            <annotation>
+                <documentation>Value of the current properties entry must not contain this string (case-sensitive)
+                </documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value-not-matches" type="string" use="optional">
+            <annotation>
+                <documentation>Value of the current properties entry must not match this regular expression
+                </documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+
+    <simpleType name="properties-entry-operation">
+        <annotation>
+            <documentation>Type of operation to perform on a certain properties entry
+                ADD = Add entry only if it does not exist yet
+                UPDATE = Update value of the entry only if it already exists
+                SET = Set value of the entry or add entry if it does not exist
+                DELETE = Remove entry entirely
+                RENAME = Rename key of the entry preserving the current value
+            </documentation>
+        </annotation>
+        <restriction base="string">
+            <enumeration value="ADD"></enumeration>
+            <enumeration value="UPDATE"></enumeration>
+            <enumeration value="SET"></enumeration>
+            <enumeration value="DELETE"></enumeration>
+            <enumeration value="RENAME"></enumeration>
+        </restriction>
+    </simpleType>
+
+    <simpleType name="properties-file-operation">
+        <annotation>
+            <documentation>Operation to perform for the properties file:
+                CREATE = Create or modify the file
+                DELETE = Remove the file entirely
+            </documentation>
+        </annotation>
+        <restriction base="string">
+            <enumeration value="CREATE"></enumeration>
+            <enumeration value="DELETE"></enumeration>
+        </restriction>
+    </simpleType>
+
+    <complexType name="database">
+        <sequence>
+            <element name="entry" type="tns:database-entry" maxOccurs="unbounded" minOccurs="1">
+                <annotation>
+                    <documentation>List of modifications to perform on the database</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="driver-class" type="string" use="required">
+            <annotation>
+                <documentation>Full-qualified Java class name of the database driver</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="jdbc-url" type="string" use="required">
+            <annotation>
+                <documentation>JDBC connection URL</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="username" type="string" use="optional">
+            <annotation>
+                <documentation>Username for authentication</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="password" type="string" use="optional">
+            <annotation>
+                <documentation>Password for authentication</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+
+    <complexType name="database-entry">
+        <sequence>
+            <element name="column-value" type="tns:database-entry-column-value" maxOccurs="unbounded" minOccurs="0">
+                <annotation>
+                    <documentation>Values to set in the columns of the table</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="operation" type="tns:database-entry-operation" use="required">
+            <annotation>
+                <documentation>Type of operation to perform on the rows of the table</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="table-name" type="string" use="required">
+            <annotation>
+                <documentation>Name of the table to operate on</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="condition" type="string" use="optional">
+            <annotation>
+                <documentation>SQL condition selecting the rows to update or delete</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <simpleType name="database-entry-operation">
+        <restriction base="string">
+            <enumeration value="ADD"></enumeration>
+            <enumeration value="UPDATE"></enumeration>
+            <enumeration value="DELETE"></enumeration>
+        </restriction>
+    </simpleType>
+
+    <complexType name="database-entry-column-value">
+        <attribute name="name" type="string" use="required">
+            <annotation>
+                <documentation>Column name</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="type" type="tns:database-entry-column-type" use="required">
+            <annotation>
+                <documentation>Data type of the column</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value" type="string" use="optional">
+            <annotation>
+                <documentation>Value to set in the column</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <simpleType name="database-entry-column-type">
+        <restriction base="string">
+            <enumeration value="BIGINT"></enumeration>
+            <enumeration value="BOOLEAN"></enumeration>
+            <enumeration value="CLOB"></enumeration>
+            <enumeration value="DATE"></enumeration>
+            <enumeration value="DOUBLE"></enumeration>
+            <enumeration value="FLOAT"></enumeration>
+            <enumeration value="INTEGER"></enumeration>
+            <enumeration value="NUMERIC"></enumeration>
+            <enumeration value="SMALLINT"></enumeration>
+            <enumeration value="TIME"></enumeration>
+            <enumeration value="TIMESTAMP"></enumeration>
+            <enumeration value="TINYINT"></enumeration>
+            <enumeration value="VARCHAR"></enumeration>
+        </restriction>
+    </simpleType>
+</schema>

@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="content-type">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Georg Wittberger">
+<title>ConfigDeployer</title>
+<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
+<link href="css/bootstrap-theme.min.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+    <div class="container theme-showcase" role="main">
+        <div class="jumbotron">
+            <h1>ConfigDeployer</h1>
+            <p>An easy way to roll-out software configurations using XML-based profiles. - Open-Source and FREE!</p>
+            <p>
+                <a title="About" href="#about" class="btn btn-primary btn-lg">About</a> <a title="Getting started"
+                    href="#gettingstarted" class="btn btn-primary btn-lg">Getting started</a> <a title="Usage"
+                    href="#usage" class="btn btn-primary btn-lg">Usage</a> <a title="Troubleshooting"
+                    href="#troubleshooting" class="btn btn-primary btn-lg">Troubleshooting</a>
+            </p>
+        </div>
+        <h1>
+            <a id="about" name="about"></a>About
+        </h1>
+        <p>ConfigDeployer is a framework designed for the deployment of software configurations in different
+            installation environments using XML-based profiles. The software itself is written in Java making it
+            platform-independent and reusable in other applications.</p>
+        <h1>
+            <a id="gettingstarted" name="gettingstarted"></a>Getting started
+        </h1>
+        <p>Since ConfigDeployer is just a framework providing the business logic to roll-out configuration profiles
+            it needs to embedded into some kind of Java application that allows you to use the functionality. For
+            example, there is already a console application which enabled the usage of ConfigDeployer's features from
+            any command line.</p>
+        <h2>Integration using Maven</h2>
+        <p>If you want to use ConfigDeployer in your own Java project you may add the following artifact to the
+            dependencies in your POM:</p>
+        <pre>&lt;groupId&gt;com.tsmms.utils&lt;/groupId&gt;
+&lt;artifactId&gt;configdeployer&lt;/artifactId&gt;
+&lt;version&gt;VERSION&lt;/version&gt;</pre>
+        <p>
+            Note: Replace
+            <code>VERSION</code>
+            with the appropriate version to use for your needs.
+        </p>
+        <h2>Integration using precompiled JAR</h2>
+        <p>If you cannot use Maven for some reason you may also include the precompiled JAR file in the classpath of
+            your Java project:</p>
+        <pre>configdeployer-VERSION.jar</pre>
+        <p>
+            Note: Replace
+            <code>VERSION</code>
+            with the appropriate version to use for your needs.
+        </p>
+        <h2>Understanding the deployment process</h2>
+        <p>ConfigDeployer has been developed with a maximum of flexibility and extensibility in mind but still tries
+            to preserve a simple and understandable architecture. Therefore the roll-out of a configuration profile is
+            divided into three major phases:</p>
+        <ol>
+            <li>Loading the profile from some kind of source (e.g. a file from the local filesystem) and converting
+                it into a Java object.</li>
+            <li>Preparing the profile for deployment on the designated target environment (e.g. replacing variables
+                in the profile with their actual values).</li>
+            <li>Applying the configuration values defined in the profile to the elements of the target environment
+                (such as properties file, database rows etc.).</li>
+        </ol>
+        <p>For each of these phases there are certain Java classes which provide the API for operations performed
+            within this particular phase.</p>
+        <ol>
+            <li>The <code>ProfileProvider</code> is responsible for all the operations required to obtain the
+                configuration profile as a Java object. The profile provider must be constructed with an instance of the
+                <code>InputStreamProvider</code> interface which must be able provide an <code>InputStream</code> object
+                to read the binary data of the configuration profile. When obtaining the profile using the profile
+                provider it first asks the input stream provider to fetch the binary stream and then tries to unmarshal
+                the XML data read from this stream to a JAXB object. For example, the <code>FileInputStreamProvider</code>
+                is an implementation that opens the input stream of a file stored in the local filesystem.
+            </li>
+            <li>The implementations of the <code>ProfilePreparer</code> interface perform the pre-processing of the
+                unmarshalled configuration profile. This can be used for different tasks such as replacing variables in
+                the configuration values, filtering certain configurations depending on some criterion etc. For example,
+                the <code>VariablesPreparer</code> can be used to replace environment variables and system properties in
+                certain elements of the profile.
+            </li>
+            <li>The <code>ProfileDeployer</code> is in charge of the actual roll-out of the configuration values to
+                the target environment. Internally it makes use of different other deployer implementations which are
+                specialized on certain target formats (e.g. properties files, database entries). The profile deployer
+                can be seen as the controller for the whole process as it must be constructed with a profile provider
+                and an arbitrary number of profile preparers. Once the <code>deploy()</code> method is called it will
+                execute the steps described above.
+            </li>
+        </ol>
+        <h2>Simple example</h2>
+        <p>
+            Given the following configuration profile stored in the file
+            <code>myprofile.xml</code>
+            in the local filesystem:
+        </p>
+        <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config-profile name="Example" version="1.0" xmlns="http://tsmms.com/utils/configdeployer/profile"<br>    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br>    xsi:schemaLocation="http://tsmms.com/utils/configdeployer/profile config-profile.xsd "&gt;
+  &lt;properties-files&gt;
+    &lt;properties-file location="/etc/myconfig.properties"&gt;
+      &lt;entry operation="SET" key="my.property.key" value="My new property value"/&gt;
+    &lt;/properties-file&gt;
+  &lt;/properties-files&gt;
+&lt;/config-profile&gt;</pre>
+        <p>
+            This profile will change the value of the key
+            <code>my.property.key</code>
+            within the properties file
+            <code>/etc/myconfig.properties</code>
+            to the new value
+            <code>My new property value</code>
+            (or create this entry if it does not exist). To apply this profile, just run the following Java code:
+        </p>
+        <pre>InputStreamProvider inputStreamProvider = new FileInputStreamProvider(new File("myprofile.xml"));<br>try {
+  ProfileDeployer profileDeployer = new ProfileDeployer(new ProfileProvider(inputStreamProvider));
+  boolean success = profileDeployer.deploy();<br>  // check if deployment was successful<br>} catch (DeployerException e) {
+  // do some error handling
+}</pre>
+        <p>Have a look at the following sections for more information about the configuration profile format and the
+            details of the deployment functionality.</p>
+        <h1>
+            <a id="usage" name="usage"></a>Usage
+        </h1>
+        <h2>Creating a profile</h2>
+        <p>A configuration profile must be provided as a XML structure which is valid according to the
+            ConfigDeployer XML-Schema. The XSD file is included in the distribution, so you may use it as a hint and
+            reference during the creation of your profile.</p>
+        <div class="alert alert-info">
+            Remember to escape special XML characters like &lt; &gt; &amp; " in the values of elements and attributes.<br>
+        </div>
+        <h3>Basic profile structure</h3>
+        <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;<br>&lt;config-profile name="PROFILE NAME" description="PROFILE DESCRIPTION" version="PROFILE VERSION"<br>    xmlns="http://tsmms.com/utils/configdeployer/profile"<br>    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br>    xsi:schemaLocation="http://tsmms.com/utils/configdeployer/profile config-profile.xsd "&gt;
+  &lt;properties-files&gt;
+    &lt;properties-file location="FILE_PATH"&gt;<br>    ...<br>    &lt;/properties-file&gt;<br>  &lt;/properties-files&gt;
+  &lt;databases&gt;
+    &lt;database driver-class="DRIVER_CLASSNAME" jdbc-url="JDBC_URL" username="USERNAME" password="PASSWORD"&gt;<br>    ...<br>    &lt;/database&gt;
+  &lt;/databases&gt;
+&lt;/config-profile&gt;</pre>
+        <p>
+            A configuration profile allows you to specify some meta-data like a
+            <code>name</code>
+            ,
+            <code>description</code>
+            and
+            <code>version</code>
+            using the respective attributes on the root element. The element structure is divided into two sections:
+            <code>properties-files</code>
+            and
+            <code>databases</code>
+            . Both are optional but once they are included in the profile they must contain at least one of its
+            sub-elements, i.e. if the
+            <code>properties-files</code>
+            element is present in the XML structure there must be at least one
+            <code>properties-file</code>
+            element within this element. The same rule applies to the
+            <code>databases</code>
+            element which must contain at least one
+            <code>database</code>
+            element.
+        </p>
+        <p>Elements and attributes of the configuration profile definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Element / Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>name</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>A short name of the configuration profile which is displayed in the log output during
+                        deployment.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>description</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>An optional description of the profile which is not used by the framework. Just for
+                        documentation purposes.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>version</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Version identifier of the configuration profile. Currently has no effect on the deployment
+                        except that it is displayed in the log output.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>properties-files</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>contains at least one <code>properties-file</code> element<br>
+                    </td>
+                    <td>Wrapper element for the list of properties files that should be manipulated during
+                        deployment of the profile.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>databases</code></td>
+                    <td>no</td>
+                    <td>contains at least one <code>database</code> element
+                    </td>
+                    <td>Wrapper element for the list of databases in which tables need to be updated during
+                        deployment of the profile.<br>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <h3>Changing properties files</h3>
+        <pre>&lt;properties-files&gt;
+  &lt;properties-file location="FILE_PATH" operation="CREATE"&gt;
+    &lt;entry operation="ADD" key="KEY_TO_ADD" value="VALUE_FOR_ADDED_KEY"/&gt;
+    &lt;entry operation="UPDATE" key="KEY_TO_UPDATE" value="NEW_VALUE_FOR_EXISTING_KEY"/&gt;
+    &lt;entry operation="SET" key="KEY_TO_SET" value="VALUE_FOR_ADDED_OR_UPDATED_KEY"/&gt;
+    &lt;entry operation="DELETE" key="KEY_TO_DELETE"/&gt;
+    &lt;entry operation="RENAME" key="KEY_TO_RENAME" value="NEW_KEY_NAME"/&gt;
+    &lt;entry operation="SET" key="KEY_TO_SET" value="VALUE_FOR_ADDED_OR_UPDATED_KEY"&gt;
+      &lt;condition value-contains="STRING_THAT_MUST_BE_CONTAINED_IN_CURRENT_VALUE"/&gt;<br>      ...<br>    &lt;/entry&gt;<br>    ...<br>  &lt;/properties-file&gt;<br>  ...<br>&lt;/properties-files&gt;</pre>
+        <p>
+            A properties file definition must have a
+            <code>location</code>
+            attribute specifying the path to the file and may have an optional
+            <code>operation</code>
+            attribute which sets the action to perform on the file. The
+            <code>properties-file</code>
+            element may contain an arbitrary number of
+            <code>entry</code>
+            elements, each defining the modification of a certain key within the file. An entry can optionally contain
+            multiple
+            <code>condition</code>
+            elements which allow the specification of prerequisites that must be satisfied by the current configuration
+            state in order to apply the change of this entry.
+        </p>
+        <p>Elements and attributes of the properties file definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Element / Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>location</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>file system path<br>
+                    </td>
+                    <td>Specifies the location of the properties file to be modified. The file system path is
+                        platform-specific (e.g. "C:\myconfig.properties") will only work on Microsoft Windows).
+                        Therefore usage of environment variables is highly recommended. See the following sections to
+                        learn more about variable substitution.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>operation</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td><code>CREATE</code> or <code>DELETE</code><br></td>
+                    <td>Defines the operation to perform on the properties file.<br>
+                        <ul>
+                            <li><code>CREATE</code> will create or modify the file.</li>
+                            <li><code>DELETE</code> will remove the file entirely (be careful!).</li>
+                        </ul> Default is <code>CREATE</code> so this attributes needs be added only if you want to delete a
+                        file.
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>entry</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td><code>condition</code> elements and attributes defining the change<br></td>
+                    <td>Each of these elements defines the change of a certain key within the properties file. It
+                        is described in detail below.<br>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Elements and attributes of the properties entry definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Element / Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>operation</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td><code>ADD</code>, <code>UPDATE</code>, <code>SET</code>, <code>DELETE</code>, <code>RENAME</code><br>
+                    </td>
+                    <td>Defines the type of operation to perform on the properties entry.<br>
+                        <ul>
+                            <li><code>ADD</code> will add the key only if it does not exist already.</li>
+                            <li><code>UPDATE</code> will change the value of the key only if it already exists.</li>
+                            <li><code>SET</code> will update the value of the key if it already exists or create
+                                the key with the specified value if it does not exist yet.</li>
+                            <li><code>DELETE</code> will remove the key from the file.</li>
+                            <li><code>RENAME</code> will change the name of the key itself, preserving the current
+                                value.</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>key</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Name of the properties entry to create, modify or delete.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>value</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Value to set for the created or modified property entry (if operation is <code>ADD</code>,
+                        <code>UPDATE</code> or <code>SET</code>). New name of the property entry if operation is <code>RENAME</code>.
+                        This attribute can be left out when deleting an entry.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>comment</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Optionally defines a comment for this key to write into the properties file.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>condition</code></td>
+                    <td>no</td>
+                    <td>attributes defining the condition</td>
+                    <td>Every <code>condition</code> element defines a check that should be performed prior to
+                        applying the change specified in the enclosing <code>entry</code> element. It is described
+                        below.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Attributes of the properties entry condition definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>value-equals</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Defines the condition that the current property value must exactly match the specified
+                        string (case-sensitive).</td>
+                </tr>
+                <tr>
+                    <td><code>value-contains</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Defines the condition that the current property value must contain the specified string
+                        (case-sensitive).</td>
+                </tr>
+                <tr>
+                    <td><code>value-matches</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>regular expression<br>
+                    </td>
+                    <td>Defines the condition that the current property value must match the specified regular
+                        expression. See <a target="_blank"
+                        href="http://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html">Pattern</a> for
+                        help on regex syntax.
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>value-not-equals</code></td>
+                    <td>no</td>
+                    <td>any string</td>
+                    <td>Defines the condition that the current property value must NOT exactly match the specified
+                        string (case-sensitive).</td>
+                </tr>
+                <tr>
+                    <td><code>value-not-contains</code></td>
+                    <td>no</td>
+                    <td>any string</td>
+                    <td>Defines the condition that the current property value must NOT contain the specified string
+                        (case-sensitive).</td>
+                </tr>
+                <tr>
+                    <td><code>value-not-matches</code></td>
+                    <td>no</td>
+                    <td>regular expression</td>
+                    <td>Defines the condition that the current property value must NOT match the specified regular
+                        expression. See <a target="_blank"
+                        href="http://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html">Pattern</a> for
+                        help on regex syntax.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="alert alert-info">
+            If a condition has multiple attributes then each of these checks must be satisfied to make the whole
+            condition valid. If an entry contains multiple
+            <code>condition</code>
+            elements then each of these prerequisites must be true in order to apply the change. If you want to have an
+            entry change performed if condition 1 <span style="text-decoration: underline;">OR</span> condition 2 is met
+            then you need to create two separate
+            <code>entry</code>
+            elements with identical configuration but each containing its own condition.<br>
+        </div>
+        <h3>Changing database rows</h3>
+        <pre>&lt;databases&gt;
+  &lt;database driver-class="DRIVER_CLASSNAME" jdbc-url="JDBC_URL" username="USERNAME" password="PASSWORD"&gt;
+    &lt;entry operation="ADD" table-name="TABLE_NAME"&gt;<br>      &lt;column-value name="COLUMN_1" type="VARCHAR" value="VALUE_FOR_COLUMN_1"/&gt;<br>      &lt;column-value name="COLUMN_2" type="INTEGER" value="VALUE_FOR_COLUMN_2"/&gt;<br>      ...<br>    &lt;/entry&gt;
+    &lt;entry operation="UPDATE" table-name="TABLE_NAME" condition="COLUMN_3 &amp;lt; 42"&gt;
+      &lt;column-value name="COLUMN_1" type="NUMERIC" value="NEW_VALUE_FOR_COLUMN_1"/&gt;<br>      &lt;column-value name="COLUMN_2" type="CLOB" value="NEW_VALUE_FOR_COLUMN_2"/&gt;<br>      ...<br>    &lt;/entry&gt;
+    &lt;entry operation="DELETE" table-name="TABLE_NAME" condition="COLUMN_1 IN ('foo', 'bar')"/&gt;<br>    ...<br>  &lt;/database&gt;<br>  ...<br>&lt;/databases&gt;</pre>
+        <p>
+            A database definition must have a
+            <code>driver-class</code>
+            attribute specifying the full-qualified name of the Java database driver class and a
+            <code>jdbc-url</code>
+            attribute defining the connection string. Optionally you can provide the
+            <code>username</code>
+            and/or
+            <code>password</code>
+            attribute if your database requires authentication. The database element must contain at least one
+            <code>entry</code>
+            element defining the change operation to perform on a certain table. Every entry of type
+            <code>ADD</code>
+            or
+            <code>UPDATE</code>
+            should then contain at least one
+            <code>column-value</code>
+            element which specifies the value to set in a certain column of the table.
+        </p>
+        <p>Elements and attributes of the database definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Element / Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>driver-class</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>full-qualified Java class name<br>
+                    </td>
+                    <td>Sets the Java class of the database driver used to connect to the database. This class is
+                        provided by your database vendor. It must implement the <code>java.sql.Driver</code> interface
+                        and must be available in the classpath when running the deployment.<br> Example for Oracle
+                        11:<br>
+                        <ul>
+                            <li>Put <code>ojdbc6.jar</code> library into the classpath.
+                            </li>
+                            <li>Set driver class to: <code>oracle.jdbc.OracleDriver</code></li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>jdbc-url</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>database URL<br>
+                    </td>
+                    <td>Defines the connection URL for the database which typically contains the driver type, host
+                        name, port and scheme name. See the reference docs of your database vendor for more information
+                        on how to connect via JDBC.<br> Example for Oracle 11 using the pure Java driver:<br>
+                        <ul>
+                            <li>Set URL to: <code>jdbc:oracle:thin:@myhost:1521:mydb</code></li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>username</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Optionally specifies the user name to use for the connection to the database.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>password</code></td>
+                    <td>no</td>
+                    <td>any string</td>
+                    <td>Optionally specifies the password to use for the connection to the database.</td>
+                </tr>
+                <tr>
+                    <td><code>entry</code></td>
+                    <td>yes</td>
+                    <td><code>column-value</code> elements and attributes defining the operation</td>
+                    <td>Each of these elements defines a change operation on a certain table within the database
+                        (e.g. updating the values in certain columns for a selection of rows). It is described in detail
+                        below.</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Elements and attributes of the database entry definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Element / Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>operation</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td><code>ADD</code>, <code>UPDATE</code>, <code>DELETE</code><br></td>
+                    <td>Defines the operation to perform on the rows of the given table:<br>
+                        <ul>
+                            <li><code>ADD</code> will insert a new row with the specified values.</li>
+                            <li><code>UPDATE</code> will change the values in certain columns of the table for all
+                                rows matching the condition.</li>
+                            <li><code>DELETE</code> will remove all rows from the table which match the condition.</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>table-name</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>name of a table<br>
+                    </td>
+                    <td>Sets the name of the table in which rows should be inserted, updated or deleted.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>condition</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>SQL WHERE clause<br>
+                    </td>
+                    <td>Specifies the SQL condition statement which selects the rows to be updated or deleted. The
+                        attribute is required if operation is <code>UPDATE</code> or <code>DELETE</code> to ensure that
+                        not all rows are modified by accident. You can provide any statement here that makes a valid
+                        WHERE clause, including sub-queries on other tables etc.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>column-value</code></td>
+                    <td>no</td>
+                    <td>attributes defining the column value</td>
+                    <td>These elements define the values to set in certain columns of the table in an <code>ADD</code>
+                        or <code>UPDATE</code> operation. It is described below.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Attributes of the database column value definition:</p>
+        <table class="table table-striped">
+            <colgroup>
+                <col width="20%">
+                <col width="10%">
+                <col width="20%">
+                <col width="50%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Mandatory</th>
+                    <th>Allowed values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>name</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td>name of a column<br>
+                    </td>
+                    <td>Specifies the name of the column whose value should be set.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>type</code><br></td>
+                    <td>yes<br>
+                    </td>
+                    <td><code>BIGINT</code>, <code>BOOLEAN</code>, <code>CLOB</code>, <code>DATE</code>, <code>DOUBLE</code>,
+                        <code>FLOAT</code>, <code>INTEGER</code>, <code>NUMERIC</code>, <code>SMALLINT</code>, <code>TIME</code>,
+                        <code>TIMESTAMP</code>, <code>TINYINT</code>, <code>VARCHAR</code><br></td>
+                    <td>Defines the data type of the column. Have a look at the DDL of the table to find out the
+                        correct value.<br>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>value</code><br></td>
+                    <td>no<br>
+                    </td>
+                    <td>any string<br>
+                    </td>
+                    <td>Value to set in the column for all rows touched by the change. The value must be valid for
+                        the given data type:<br>
+                        <ul>
+                            <li>Character sequences like <code>CLOB</code> and <code>VARCHAR</code> may have any
+                                string value.
+                            </li>
+                            <li>Integer numeric types likes <code>BIGINT</code>, <code>INTEGER</code>, <code>SMALLINT</code>
+                                and <code>TINYINT</code> must only have digits (e.g. "123").
+                            </li>
+                            <li>Decimal numeric types like <code>DOUBLE</code>, <code>FLOAT</code> and <code>NUMERIC</code>
+                                should only have digits and optionally a dot as decimal delimiter (e.g. "123.45").
+                            </li>
+                            <li><code>BOOLEAN</code> must either have "true" or "false" only.</li>
+                            <li><code>DATE</code> should be in the format: "yyyy-mm-dd".</li>
+                            <li><code>TIME</code> should be in the format: "hh:mm:ss".</li>
+                            <li><code>TIMESTAMP</code> should be in the format: "yyyy-mm-dd hh:mm:ss.ffffffff". The
+                                fractional seconds can be omitted if not required.</li>
+                        </ul>
+                        <p>
+                            If this attribute is left out then
+                            <code>null</code>
+                            will be set.
+                        </p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            <br>
+        </p>
+        <h2>Deploying a profile</h2>
+        <h1>
+            <a id="troubleshooting" name="troubleshooting"></a>Troubleshooting
+        </h1>
+    </div>
+    <script src="js/jquery.min.js" type="text/javascript"></script>
+    <script src="js/bootstrap.min.js" type="text/javascript"></script>
+</body>
+</html>
