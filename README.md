@@ -45,9 +45,9 @@ Creating a profile
 There is a XML schema definition (XSD) you can use to create and validate a profile: `/src/main/xsd/config-profile.xsd`. Here is a simple properties file example:
 
     <?xml version="1.0" encoding="UTF-8"?>
-    <config-profile name="Example" version="1.0" xmlns="http://tsmms.com/utils/configdeployer/profile"
+    <config-profile name="Example" version="1.0" xmlns="http://configdeployer.com/profile"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://tsmms.com/utils/configdeployer/profile config-profile.xsd ">
+        xsi:schemaLocation="http://configdeployer.com/profile config-profile.xsd">
       <properties-files>
         <properties-file location="/etc/myconfig.properties">
           <entry operation="SET" key="my.property.key" value="My new property value"/>

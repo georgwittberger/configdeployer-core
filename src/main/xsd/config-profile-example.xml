@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config-profile name="Example Profile" description="This is an example profile." version="1.0" xmlns="http://tsmms.com/utils/configdeployer/profile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://tsmms.com/utils/configdeployer/profile config-profile.xsd ">
+<config-profile name="Example Profile" description="This is an example profile." version="1.0" xmlns="http://configdeployer.com/profile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://configdeployer.com/profile config-profile.xsd">
   <properties-files>
     <properties-file location="${env:BASEDIR}/myconfig.properties">
       <entry operation="ADD" key="key_to_add" value="Entry is only added if key does not exist"/>
@@ -11,7 +11,7 @@
       <entry operation="RENAME" key="key_to_rename" value="new_key"/>
     </properties-file>
     <properties-file location="${sys:user.home}/personal.properties">
-      <entry operation="SET" key="key_to_set" value="Entry is always added/updated with this value"/>
+      <entry operation="SET" key="key_to_set" value="Entry is always added/updated with this value" comment="Optional comment"/>
     </properties-file>
     <properties-file location="${sys:user.home}/obsolete.properties" operation="DELETE"/>
   </properties-files>
