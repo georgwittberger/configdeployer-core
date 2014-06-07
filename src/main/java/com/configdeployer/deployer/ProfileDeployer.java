@@ -1,5 +1,6 @@
 package com.configdeployer.deployer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -26,17 +27,21 @@ public class ProfileDeployer
 
     public ProfileDeployer(ProfileProvider profileProvider, ProfilePreparer... profilePreparers)
     {
+        this(profileProvider, profilePreparers != null ? Arrays.asList(profilePreparers) : null);
+    }
+
+    public ProfileDeployer(ProfileProvider profileProvider, List<? extends ProfilePreparer> profilePreparers)
+    {
         this.profileProvider = profileProvider;
-        List<ProfilePreparer> preparers;
         if (profilePreparers != null)
         {
-            preparers = Arrays.asList(profilePreparers);
+            this.profilePreparers = new ArrayList<ProfilePreparer>(profilePreparers.size());
+            this.profilePreparers.addAll(profilePreparers);
         }
         else
         {
-            preparers = Collections.emptyList();
+            this.profilePreparers = Collections.emptyList();
         }
-        this.profilePreparers = preparers;
     }
 
     public boolean deploy() throws DeployerException
