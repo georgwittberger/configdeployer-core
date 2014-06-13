@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schema targetNamespace="http://configdeployer.com/profile" elementFormDefault="qualified" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://configdeployer.com/profile">
+<schema targetNamespace="http://configdeployer.com/profile" elementFormDefault="qualified" xmlns="http://www.w3.org/2001/XMLSchema"
+    xmlns:tns="http://configdeployer.com/profile" version="0.1.3">
 
     <annotation>
         <documentation>XML schema for the ConfigDeployer profile</documentation>
@@ -60,11 +61,28 @@
 
     <complexType name="properties-file">
         <sequence>
-            <element name="entry" type="tns:properties-entry" maxOccurs="unbounded" minOccurs="0">
-                <annotation>
-                    <documentation>List of entries to add, modify or delete within the properties file</documentation>
-                </annotation>
-            </element>
+            <choice maxOccurs="unbounded" minOccurs="0">
+                <element name="add" type="tns:properties-add-entry">
+                    <annotation>
+                        <documentation>Add a properties entry</documentation>
+                    </annotation></element>
+                <element name="update" type="tns:properties-update-entry">
+                    <annotation>
+                        <documentation>Update existing properties entries</documentation>
+                    </annotation></element>
+                <element name="set" type="tns:properties-set-entry">
+                    <annotation>
+                        <documentation>Add or update a properties entry</documentation>
+                    </annotation></element>
+                <element name="delete" type="tns:properties-delete-entry">
+                    <annotation>
+                        <documentation>Delete properties entries</documentation>
+                    </annotation></element>
+                <element name="rename" type="tns:properties-rename-entry">
+                    <annotation>
+                        <documentation>Rename key of properties entries</documentation>
+                    </annotation></element>
+            </choice>
         </sequence>
         <attribute name="location" type="string" use="required">
             <annotation>
@@ -78,33 +96,124 @@
         </attribute>
     </complexType>
 
-    <complexType name="properties-entry">
-        <sequence>
-            <element name="condition" maxOccurs="unbounded" minOccurs="0" type="tns:properties-entry-condition">
-                <annotation>
-                    <documentation>List of conditions that must be satisfied to apply this configuration</documentation>
-                </annotation>
-            </element>
-        </sequence>
-        <attribute name="operation" type="tns:properties-entry-operation" use="required">
-            <annotation>
-                <documentation>Operation to perform for the properties entry</documentation>
-            </annotation>
-        </attribute>
+    <complexType name="properties-add-entry">
         <attribute name="key" type="string" use="required">
             <annotation>
-                <documentation>Properties key to add, modify or delete</documentation>
+                <documentation>Properties key to add</documentation>
             </annotation>
         </attribute>
         <attribute name="value" type="string" use="optional">
             <annotation>
-                <documentation>Value to set for the properties entry or the new key in a RENAME operation</documentation>
+                <documentation>Value to set for the properties key</documentation>
             </annotation>
         </attribute>
         <attribute name="comment" type="string" use="optional">
             <annotation>
                 <documentation>Comment for the properties entry</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <complexType name="properties-update-entry">
+        <sequence>
+            <element name="condition" maxOccurs="unbounded" minOccurs="0" type="tns:properties-entry-condition">
+                <annotation>
+                    <documentation>List of conditions that must be satisfied to update an entry</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="key" type="string" use="optional">
+            <annotation>
+                <documentation>Properties key to update</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="key-pattern" type="string" use="optional">
+            <annotation>
+                <documentation>Regular expression defining all keys to update</documentation>
             </annotation></attribute>
+        <attribute name="value" type="string" use="optional">
+            <annotation>
+                <documentation>Value to set for the properties key</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="comment" type="string" use="optional">
+            <annotation>
+                <documentation>Comment for the properties entry</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <complexType name="properties-set-entry">
+        <sequence>
+            <element name="condition" maxOccurs="unbounded" minOccurs="0" type="tns:properties-entry-condition">
+                <annotation>
+                    <documentation>List of conditions that must be satisfied to update an entry</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="key" type="string" use="required">
+            <annotation>
+                <documentation>Properties key to add or update</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="value" type="string" use="optional">
+            <annotation>
+                <documentation>Value to set for the properties key</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="comment" type="string" use="optional">
+            <annotation>
+                <documentation>Comment for the properties entry</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <complexType name="properties-delete-entry">
+        <sequence>
+            <element name="condition" maxOccurs="unbounded" minOccurs="0" type="tns:properties-entry-condition">
+                <annotation>
+                    <documentation>List of conditions that must be satisfied to delete the entry</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="key" type="string" use="optional">
+            <annotation>
+                <documentation>Properties key to delete</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="key-pattern" type="string" use="optional">
+            <annotation>
+                <documentation>Regular expression defining all keys to delete</documentation>
+            </annotation></attribute>
+    </complexType>
+
+    <complexType name="properties-rename-entry">
+        <sequence>
+            <element name="condition" maxOccurs="unbounded" minOccurs="0" type="tns:properties-entry-condition">
+                <annotation>
+                    <documentation>List of conditions that must be satisfied to rename an entry</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="key" type="string" use="optional">
+            <annotation>
+                <documentation>Properties key to rename</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="key-pattern" type="string" use="optional">
+            <annotation>
+                <documentation>Regular expression defining all keys to rename</documentation>
+            </annotation></attribute>
+        <attribute name="value" type="string" use="required">
+            <annotation>
+                <documentation>New properties key (may contain backrefs when using key-pattern)</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="comment" type="string" use="optional">
+            <annotation>
+                <documentation>Comment for the properties entry</documentation>
+            </annotation>
+        </attribute>
     </complexType>
 
     <complexType name="properties-entry-condition">
@@ -144,26 +253,6 @@
             </annotation>
         </attribute>
     </complexType>
-
-
-    <simpleType name="properties-entry-operation">
-        <annotation>
-            <documentation>Type of operation to perform on a certain properties entry
-                ADD = Add entry only if it does not exist yet
-                UPDATE = Update value of the entry only if it already exists
-                SET = Set value of the entry or add entry if it does not exist
-                DELETE = Remove entry entirely
-                RENAME = Rename key of the entry preserving the current value
-            </documentation>
-        </annotation>
-        <restriction base="string">
-            <enumeration value="ADD"></enumeration>
-            <enumeration value="UPDATE"></enumeration>
-            <enumeration value="SET"></enumeration>
-            <enumeration value="DELETE"></enumeration>
-            <enumeration value="RENAME"></enumeration>
-        </restriction>
-    </simpleType>
 
     <simpleType name="properties-file-operation">
         <annotation>
