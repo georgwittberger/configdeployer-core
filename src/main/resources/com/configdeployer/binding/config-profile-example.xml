@@ -1,40 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config-profile name="Example Profile" description="Optional description of the profile" version="1.0"
-    xmlns="http://configdeployer.com/profile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://configdeployer.com/profile config-profile.xsd ">
-    <properties-files>
-        <properties-file location="${env:BASEDIR}/basic.properties">
-            <add key="added.key" value="Entry which is only added if it does not exist" />
-            <update key="updated.key" value="Value which is only set if key already exists" />
-            <set key="set.key" value="Value which is always set" />
-            <delete key="deleted.key" />
-            <rename key="old.key" value="new.key" />
-        </properties-file>
-        <properties-file location="${sys:user.home}/conditional.properties">
-            <set key="conditional.string" value="Value which is only set if current value is 'foo'">
-                <condition value-equals="foo" />
-            </set>
-            <update key="conditional.regex" value="Value which is only set of current value is at least one digit">
-                <condition value-matches="\d+" />
-            </update>
-        </properties-file>
-        <properties-file location="${env:USERPROFILE}/comments.properties">
-            <add key="commented.key" value="Added entry with comment" comment="This is an entry with comment" />
-        </properties-file>
-        <properties-file location="${sys:user.home}/keymatching.properties">
-            <update key-pattern="number\.\d+\.key" value="Value which is set for all keys matching the pattern" />
-        </properties-file>
-    </properties-files>
-    <databases>
-        <database driver-class="oracle.jdbc.OracleDriver" jdbc-url="jdbc:oracle:thin:@myhost:1521:orcl"
-            username="${env:DBUSER}" password="${env:DBPWD}">
-            <entry operation="ADD" table-name="mytable">
-                <column-value name="mycolumn1" type="VARCHAR" value="sample_value" />
-                <column-value name="mycolumn2" type="INTEGER" value="42" />
-            </entry>
-            <entry operation="UPDATE" table-name="mytable" condition="mycolumn2 &gt; 42">
-                <column-value name="mycolumn1" type="VARCHAR" value="new_value" />
-            </entry>
-            <entry operation="DELETE" table-name="mytable" condition="mycolumn2 &lt; 42" />
-        </database>
-    </databases>
+    xmlns="http://configdeployer.com/profile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://configdeployer.com/profile config-profile.xsd ">
+    <properties-file location="${env:BASEDIR}/basic.properties">
+        <add key="added.key" value="Entry which is only added if it does not exist" />
+        <update key="updated.key" value="Value which is only set if key already exists" />
+        <set key="set.key" value="Value which is always set" />
+        <delete key="deleted.key" />
+        <rename key="old.key" new-key="new.key" />
+    </properties-file>
+    <properties-file location="${sys:user.home}/conditional.properties">
+        <set key="conditional.string" value="Value which is only set if current value is 'foo'">
+            <condition value-equals="foo" />
+        </set>
+        <update key="conditional.regex" value="Value which is only set of current value is at least one digit">
+            <condition value-matches="\d+" />
+        </update>
+    </properties-file>
+    <properties-file location="${env:USERPROFILE}/comments.properties">
+        <add key="commented.key" value="Added entry with comment" comment="This is an entry with comment" />
+    </properties-file>
+    <properties-file location="${sys:user.home}/keymatching.properties">
+        <update key-pattern="number\.\d+\.key" value="Value which is set for all keys matching the pattern" />
+    </properties-file>
+    <database driver-class="oracle.jdbc.OracleDriver" jdbc-url="jdbc:oracle:thin:@myhost:1521:orcl"
+        username="${env:DBUSER}" password="${env:DBPWD}">
+        <add table="employees">
+            <set column="firstname" type="VARCHAR" value="Emily" />
+            <set column="lastname" type="VARCHAR" value="Blunt" />
+        </add>
+        <update table="movies" condition="title = 'Edge of Tomorrow'">
+            <set column="genre" type="VARCHAR" value="Sci-Fi" />
+        </update>
+        <delete table="movies" condition="year &lt; 1970" />
+    </database>
 </config-profile>

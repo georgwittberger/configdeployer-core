@@ -19,9 +19,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.configdeployer.binding.Database;
-import com.configdeployer.binding.DatabaseEntry;
+import com.configdeployer.binding.DatabaseAddEntry;
+import com.configdeployer.binding.DatabaseDeleteEntry;
 import com.configdeployer.binding.DatabaseEntryColumnType;
 import com.configdeployer.binding.DatabaseEntryColumnValue;
+import com.configdeployer.binding.DatabaseUpdateEntry;
 
 public class DatabaseDeployer
 {
@@ -42,9 +44,20 @@ public class DatabaseDeployer
         {
             connection = dataSource.getConnection();
             logger.info("Connection to database '{}' successfully opened.", databaseProfile.getJdbcUrl());
-            for (DatabaseEntry entry : databaseProfile.getEntry())
+            for (Object entry : databaseProfile.getAddOrUpdateOrDelete())
             {
-                applyEntryConfiguration(entry, connection);
+                if (entry instanceof DatabaseAddEntry)
+                {
+                    applyEntry((DatabaseAddEntry) entry, connection);
+                }
+                else if (entry instanceof DatabaseUpdateEntry)
+                {
+                    applyEntry((DatabaseUpdateEntry) entry, connection);
+                }
+                else if (entry instanceof DatabaseDeleteEntry)
+                {
+                    applyEntry((DatabaseDeleteEntry) entry, connection);
+                }
             }
             connection.commit();
             logger.info("Changes to database '{}' successfully committed.", databaseProfile.getJdbcUrl());
@@ -109,68 +122,64 @@ public class DatabaseDeployer
         return dataSource;
     }
 
-    private void applyEntryConfiguration(DatabaseEntry entry, Connection connection) throws SQLException
+    private void applyEntry(DatabaseAddEntry entry, Connection connection) throws SQLException
     {
-        switch (entry.getOperation())
+        if (!rowsExist(entry.getTable(), entry.getSet(), connection))
         {
-        case ADD:
-            if (!rowsExist(entry.getTableName(), entry.getColumnValue(), connection))
+            int insertedRowsCount = executeInsert(entry.getTable(), entry.getSet(), connection);
+            if (insertedRowsCount > 0)
             {
-                int insertedRowsCount = executeInsert(entry.getTableName(), entry.getColumnValue(), connection);
-                if (insertedRowsCount > 0)
-                {
-                    logger.info("Inserted {} rows into table '{}'.", insertedRowsCount, entry.getTableName());
-                }
-                else
-                {
-                    logger.warn("No rows were inserted into table '{}'.", entry.getTableName());
-                }
+                logger.info("Inserted {} rows into table '{}'.", insertedRowsCount, entry.getTable());
             }
             else
             {
-                logger.info("Skipped inserting into table '{}' because rows with specified values already exist.",
-                        entry.getTableName());
+                logger.error("No rows were inserted into table '{}'.", entry.getTable());
             }
-            break;
-        case UPDATE:
-            if (StringUtils.isBlank(entry.getCondition()))
-            {
-                logger.warn("Skipped updating table '{}' because update without condition is not permitted!",
-                        entry.getTableName());
-                return;
-            }
-            int updatedRowsCount = executeUpdate(entry.getTableName(), entry.getCondition(), entry.getColumnValue(),
-                    connection);
-            if (updatedRowsCount > 0)
-            {
-                logger.info("Updated {} rows in table '{}' matching condition '{}'.", updatedRowsCount,
-                        entry.getTableName(), entry.getCondition());
-            }
-            else
-            {
-                logger.info("No rows were updated in table '{}' because none matched condition '{}'.",
-                        entry.getTableName(), entry.getCondition());
-            }
-            break;
-        case DELETE:
-            if (StringUtils.isBlank(entry.getCondition()))
-            {
-                logger.warn("Skipped deleting from table '{}' because delete without condition is not permitted!",
-                        entry.getTableName());
-                return;
-            }
-            int deletedRowsCount = executeDelete(entry.getTableName(), entry.getCondition(), connection);
-            if (deletedRowsCount > 0)
-            {
-                logger.info("Deleted {} rows in table '{}' matching condition '{}'.", deletedRowsCount,
-                        entry.getTableName(), entry.getCondition());
-            }
-            else
-            {
-                logger.info("No rows were deleted in table '{}' because none matched condition '{}'.",
-                        entry.getTableName(), entry.getCondition());
-            }
-            break;
+        }
+        else
+        {
+            logger.info("Skipped inserting into table '{}' because rows with specified values already exist.",
+                    entry.getTable());
+        }
+    }
+
+    private void applyEntry(DatabaseUpdateEntry entry, Connection connection) throws SQLException
+    {
+        if (StringUtils.isBlank(entry.getCondition()))
+        {
+            throw new SQLException("Update operation without condition is not permitted! (Table: " + entry.getTable()
+                    + ")");
+        }
+        int updatedRowsCount = executeUpdate(entry.getTable(), entry.getCondition(), entry.getSet(), connection);
+        if (updatedRowsCount > 0)
+        {
+            logger.info("Updated {} rows in table '{}' matching condition '{}'.", updatedRowsCount, entry.getTable(),
+                    entry.getCondition());
+        }
+        else
+        {
+            logger.info("No rows were updated in table '{}' because none matched condition '{}'.", entry.getTable(),
+                    entry.getCondition());
+        }
+    }
+
+    private void applyEntry(DatabaseDeleteEntry entry, Connection connection) throws SQLException
+    {
+        if (StringUtils.isBlank(entry.getCondition()))
+        {
+            throw new SQLException("Delete operation without condition is not permitted! (Table: " + entry.getTable()
+                    + ")");
+        }
+        int deletedRowsCount = executeDelete(entry.getTable(), entry.getCondition(), connection);
+        if (deletedRowsCount > 0)
+        {
+            logger.info("Deleted {} rows from table '{}' matching condition '{}'.", deletedRowsCount, entry.getTable(),
+                    entry.getCondition());
+        }
+        else
+        {
+            logger.info("No rows were deleted from table '{}' because none matched condition '{}'.", entry.getTable(),
+                    entry.getCondition());
         }
     }
 
@@ -260,7 +269,7 @@ public class DatabaseDeployer
             {
                 joinedColumnNames += separator;
             }
-            joinedColumnNames += columnValue.getName() + columnSuffix;
+            joinedColumnNames += columnValue.getColumn() + columnSuffix;
         }
         return joinedColumnNames;
     }
@@ -278,50 +287,50 @@ public class DatabaseDeployer
             }
             switch (columnValue.getType())
             {
-            case BIGINT:
-                statement.setLong(parameterIndex, Long.valueOf(columnValue.getValue()));
-                break;
-            case BOOLEAN:
-                statement.setBoolean(parameterIndex, Boolean.parseBoolean(columnValue.getValue()));
-                break;
-            case CLOB:
-                Reader reader = new StringReader(columnValue.getValue());
-                statement.setClob(parameterIndex, reader, columnValue.getValue().length());
-                break;
-            case DATE:
-                statement.setDate(parameterIndex, Date.valueOf(columnValue.getValue()));
-                break;
-            case DOUBLE:
-                statement.setDouble(parameterIndex, Double.valueOf(columnValue.getValue()));
-                break;
-            case FLOAT:
-                statement.setFloat(parameterIndex, Float.valueOf(columnValue.getValue()));
-                break;
-            case INTEGER:
-                statement.setInt(parameterIndex, Integer.valueOf(columnValue.getValue()));
-                break;
-            case NUMERIC:
-                statement.setBigDecimal(parameterIndex, new BigDecimal(columnValue.getValue()));
-                break;
-            case SMALLINT:
-                statement.setShort(parameterIndex, Short.valueOf(columnValue.getValue()));
-                break;
-            case TIME:
-                statement.setTime(parameterIndex, Time.valueOf(columnValue.getValue()));
-                break;
-            case TIMESTAMP:
-                statement.setTimestamp(parameterIndex, Timestamp.valueOf(columnValue.getValue()));
-                break;
-            case TINYINT:
-                statement.setByte(parameterIndex, Byte.valueOf(columnValue.getValue()));
-                break;
-            case VARCHAR:
-                statement.setString(parameterIndex, columnValue.getValue());
-                break;
-            default:
-                statement.setObject(parameterIndex, columnValue.getValue(),
-                        getSQLTypeByColumnType(columnValue.getType()));
-                break;
+                case BIGINT:
+                    statement.setLong(parameterIndex, Long.valueOf(columnValue.getValue()));
+                    break;
+                case BOOLEAN:
+                    statement.setBoolean(parameterIndex, Boolean.parseBoolean(columnValue.getValue()));
+                    break;
+                case CLOB:
+                    Reader reader = new StringReader(columnValue.getValue());
+                    statement.setClob(parameterIndex, reader, columnValue.getValue().length());
+                    break;
+                case DATE:
+                    statement.setDate(parameterIndex, Date.valueOf(columnValue.getValue()));
+                    break;
+                case DOUBLE:
+                    statement.setDouble(parameterIndex, Double.valueOf(columnValue.getValue()));
+                    break;
+                case FLOAT:
+                    statement.setFloat(parameterIndex, Float.valueOf(columnValue.getValue()));
+                    break;
+                case INTEGER:
+                    statement.setInt(parameterIndex, Integer.valueOf(columnValue.getValue()));
+                    break;
+                case NUMERIC:
+                    statement.setBigDecimal(parameterIndex, new BigDecimal(columnValue.getValue()));
+                    break;
+                case SMALLINT:
+                    statement.setShort(parameterIndex, Short.valueOf(columnValue.getValue()));
+                    break;
+                case TIME:
+                    statement.setTime(parameterIndex, Time.valueOf(columnValue.getValue()));
+                    break;
+                case TIMESTAMP:
+                    statement.setTimestamp(parameterIndex, Timestamp.valueOf(columnValue.getValue()));
+                    break;
+                case TINYINT:
+                    statement.setByte(parameterIndex, Byte.valueOf(columnValue.getValue()));
+                    break;
+                case VARCHAR:
+                    statement.setString(parameterIndex, columnValue.getValue());
+                    break;
+                default:
+                    statement.setObject(parameterIndex, columnValue.getValue(),
+                            getSQLTypeByColumnType(columnValue.getType()));
+                    break;
             }
         }
     }
@@ -330,32 +339,32 @@ public class DatabaseDeployer
     {
         switch (columnType)
         {
-        case BIGINT:
-            return Types.BIGINT;
-        case BOOLEAN:
-            return Types.BOOLEAN;
-        case CLOB:
-            return Types.CLOB;
-        case DATE:
-            return Types.DATE;
-        case DOUBLE:
-            return Types.DOUBLE;
-        case FLOAT:
-            return Types.FLOAT;
-        case INTEGER:
-            return Types.INTEGER;
-        case NUMERIC:
-            return Types.NUMERIC;
-        case SMALLINT:
-            return Types.SMALLINT;
-        case TIME:
-            return Types.TIME;
-        case TIMESTAMP:
-            return Types.TIMESTAMP;
-        case TINYINT:
-            return Types.TINYINT;
-        case VARCHAR:
-            return Types.VARCHAR;
+            case BIGINT:
+                return Types.BIGINT;
+            case BOOLEAN:
+                return Types.BOOLEAN;
+            case CLOB:
+                return Types.CLOB;
+            case DATE:
+                return Types.DATE;
+            case DOUBLE:
+                return Types.DOUBLE;
+            case FLOAT:
+                return Types.FLOAT;
+            case INTEGER:
+                return Types.INTEGER;
+            case NUMERIC:
+                return Types.NUMERIC;
+            case SMALLINT:
+                return Types.SMALLINT;
+            case TIME:
+                return Types.TIME;
+            case TIMESTAMP:
+                return Types.TIMESTAMP;
+            case TINYINT:
+                return Types.TINYINT;
+            case VARCHAR:
+                return Types.VARCHAR;
         }
         return Types.OTHER;
     }

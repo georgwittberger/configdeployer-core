@@ -11,35 +11,16 @@
         </annotation>
         <complexType>
             <sequence>
-                <element name="properties-files" maxOccurs="1" minOccurs="0">
-                    <annotation>
-                        <documentation>Group of properties files to operate on</documentation>
-                    </annotation>
-                    <complexType>
-                        <sequence>
-                            <element name="properties-file" type="tns:properties-file" maxOccurs="unbounded"
-                                minOccurs="1">
-                                <annotation>
-                                    <documentation>List of properties files to operate on</documentation>
-                                </annotation>
-                            </element>
-                        </sequence>
-                    </complexType>
-                </element>
-                <element name="databases" maxOccurs="1" minOccurs="0">
-                    <annotation>
-                        <documentation>Group of databases to operate on</documentation>
-                    </annotation>
-                    <complexType>
-                        <sequence>
-                            <element name="database" type="tns:database" maxOccurs="unbounded" minOccurs="1">
-                                <annotation>
-                                    <documentation>List of databases to operate on</documentation>
-                                </annotation>
-                            </element>
-                        </sequence>
-                    </complexType>
-                </element>
+                <choice maxOccurs="unbounded" minOccurs="1">
+                    <element name="properties-file" type="tns:properties-file">
+                        <annotation>
+                            <documentation>Change entries within a properties file</documentation>
+                        </annotation></element>
+                    <element name="database" type="tns:database">
+                        <annotation>
+                            <documentation>Change rows within database tables</documentation>
+                        </annotation></element>
+                </choice>
             </sequence>
             <attribute name="name" type="string" use="required">
                 <annotation>
@@ -204,7 +185,7 @@
             <annotation>
                 <documentation>Regular expression defining all keys to rename</documentation>
             </annotation></attribute>
-        <attribute name="value" type="string" use="required">
+        <attribute name="new-key" type="string" use="required">
             <annotation>
                 <documentation>New properties key (may contain backrefs when using key-pattern)</documentation>
             </annotation>
@@ -269,11 +250,20 @@
 
     <complexType name="database">
         <sequence>
-            <element name="entry" type="tns:database-entry" maxOccurs="unbounded" minOccurs="1">
-                <annotation>
-                    <documentation>List of modifications to perform on the database</documentation>
-                </annotation>
-            </element>
+            <choice maxOccurs="unbounded" minOccurs="1">
+                <element name="add" type="tns:database-add-entry">
+                    <annotation>
+                        <documentation>Add a row to a table</documentation>
+                    </annotation></element>
+                <element name="update" type="tns:database-update-entry">
+                    <annotation>
+                        <documentation>Update rows in a table</documentation>
+                    </annotation></element>
+                <element name="delete" type="tns:database-delete-entry">
+                    <annotation>
+                        <documentation>Delete rows from a table</documentation>
+                    </annotation></element>
+            </choice>
         </sequence>
         <attribute name="driver-class" type="string" use="required">
             <annotation>
@@ -297,42 +287,56 @@
         </attribute>
     </complexType>
 
-
-    <complexType name="database-entry">
+    <complexType name="database-add-entry">
         <sequence>
-            <element name="column-value" type="tns:database-entry-column-value" maxOccurs="unbounded" minOccurs="0">
+            <element name="set" type="tns:database-entry-column-value" maxOccurs="unbounded" minOccurs="1">
                 <annotation>
-                    <documentation>Values to set in the columns of the table</documentation>
+                    <documentation>Values to set in the columns of added row</documentation>
                 </annotation>
             </element>
         </sequence>
-        <attribute name="operation" type="tns:database-entry-operation" use="required">
+        <attribute name="table" type="string" use="required">
             <annotation>
-                <documentation>Type of operation to perform on the rows of the table</documentation>
-            </annotation>
-        </attribute>
-        <attribute name="table-name" type="string" use="required">
-            <annotation>
-                <documentation>Name of the table to operate on</documentation>
-            </annotation>
-        </attribute>
-        <attribute name="condition" type="string" use="optional">
-            <annotation>
-                <documentation>SQL condition selecting the rows to update or delete</documentation>
+                <documentation>Name of the table to add a row to</documentation>
             </annotation>
         </attribute>
     </complexType>
 
-    <simpleType name="database-entry-operation">
-        <restriction base="string">
-            <enumeration value="ADD"></enumeration>
-            <enumeration value="UPDATE"></enumeration>
-            <enumeration value="DELETE"></enumeration>
-        </restriction>
-    </simpleType>
+    <complexType name="database-update-entry">
+        <sequence>
+            <element name="set" type="tns:database-entry-column-value" maxOccurs="unbounded" minOccurs="1">
+                <annotation>
+                    <documentation>Values to set in the columns of the updated rows</documentation>
+                </annotation>
+            </element>
+        </sequence>
+        <attribute name="table" type="string" use="required">
+            <annotation>
+                <documentation>Name of the table to update rows in</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="condition" type="string" use="required">
+            <annotation>
+                <documentation>SQL condition selecting the rows to update</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
+
+    <complexType name="database-delete-entry">
+        <attribute name="table" type="string" use="required">
+            <annotation>
+                <documentation>Name of the table to delete rows from</documentation>
+            </annotation>
+        </attribute>
+        <attribute name="condition" type="string" use="required">
+            <annotation>
+                <documentation>SQL condition selecting the rows to delete</documentation>
+            </annotation>
+        </attribute>
+    </complexType>
 
     <complexType name="database-entry-column-value">
-        <attribute name="name" type="string" use="required">
+        <attribute name="column" type="string" use="required">
             <annotation>
                 <documentation>Column name</documentation>
             </annotation>

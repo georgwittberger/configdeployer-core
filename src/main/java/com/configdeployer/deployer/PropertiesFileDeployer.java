@@ -292,7 +292,7 @@ public class PropertiesFileDeployer
             PropertiesRenameEntry virtualEntry = cloneEntry(entry);
             virtualEntry.setKey(propertiesKey);
             virtualEntry.setKeyPattern(null);
-            virtualEntry.setValue(keyMatcher.replaceAll(entry.getValue()));
+            virtualEntry.setNewKey(keyMatcher.replaceAll(entry.getNewKey()));
             virtualEntries.add(virtualEntry);
         }
         return virtualEntries;
@@ -303,7 +303,7 @@ public class PropertiesFileDeployer
         PropertiesRenameEntry clonedEntry = new PropertiesRenameEntry();
         clonedEntry.setKey(originalEntry.getKey());
         clonedEntry.setKeyPattern(originalEntry.getKeyPattern());
-        clonedEntry.setValue(originalEntry.getValue());
+        clonedEntry.setNewKey(originalEntry.getNewKey());
         clonedEntry.setComment(originalEntry.getComment());
         for (PropertiesEntryCondition condition : originalEntry.getCondition())
         {
@@ -465,25 +465,25 @@ public class PropertiesFileDeployer
         if (propertiesConfiguration.containsKey(entry.getKey()))
         {
             Object propertyValue = propertiesConfiguration.getProperty(entry.getKey());
-            propertiesConfiguration.setProperty(entry.getValue(), propertyValue);
+            propertiesConfiguration.setProperty(entry.getNewKey(), propertyValue);
             PropertiesConfigurationLayout propertiesLayout = propertiesConfiguration.getLayout();
-            propertiesLayout
-                    .setBlancLinesBefore(entry.getValue(), propertiesLayout.getBlancLinesBefore(entry.getKey()));
-            propertiesLayout.setComment(entry.getValue(), propertiesLayout.getComment(entry.getKey()));
-            propertiesLayout.setSeparator(entry.getValue(), propertiesLayout.getSeparator(entry.getKey()));
-            propertiesLayout.setSingleLine(entry.getValue(), propertiesLayout.isSingleLine(entry.getKey()));
+            propertiesLayout.setBlancLinesBefore(entry.getNewKey(),
+                    propertiesLayout.getBlancLinesBefore(entry.getKey()));
+            propertiesLayout.setComment(entry.getNewKey(), propertiesLayout.getComment(entry.getKey()));
+            propertiesLayout.setSeparator(entry.getNewKey(), propertiesLayout.getSeparator(entry.getKey()));
+            propertiesLayout.setSingleLine(entry.getNewKey(), propertiesLayout.isSingleLine(entry.getKey()));
             propertiesConfiguration.clearProperty(entry.getKey());
             if (entry.getComment() != null)
             {
-                propertiesConfiguration.getLayout().setComment(entry.getValue(), entry.getComment());
+                propertiesConfiguration.getLayout().setComment(entry.getNewKey(), entry.getComment());
             }
-            logger.info("Renamed property '{}' to '{}' in file '{}'.", entry.getKey(), entry.getValue(),
+            logger.info("Renamed property '{}' to '{}' in file '{}'.", entry.getKey(), entry.getNewKey(),
                     propertiesConfiguration.getFile().getAbsolutePath());
         }
         else
         {
             logger.info("Skipped renaming property '{}' to '{}' in file '{}' because it does not exist.",
-                    entry.getKey(), entry.getValue(), propertiesConfiguration.getFile().getAbsolutePath());
+                    entry.getKey(), entry.getNewKey(), propertiesConfiguration.getFile().getAbsolutePath());
         }
     }
 

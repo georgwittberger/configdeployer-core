@@ -9,8 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.configdeployer.binding.ConfigProfile;
-import com.configdeployer.binding.ConfigProfile.Databases;
-import com.configdeployer.binding.ConfigProfile.PropertiesFiles;
 import com.configdeployer.binding.Database;
 import com.configdeployer.binding.PropertiesFile;
 
@@ -26,19 +24,16 @@ public class VariablesPreparer implements ProfilePreparer
     public void prepareProfile(ConfigProfile profile) throws PreparerException
     {
         profile.setName(replaceVariables(profile.getName()));
-        PropertiesFiles propertiesFiles = profile.getPropertiesFiles();
-        if (propertiesFiles != null)
+        for (Object target : profile.getPropertiesFileOrDatabase())
         {
-            for (PropertiesFile propertiesFile : propertiesFiles.getPropertiesFile())
+            if (target instanceof PropertiesFile)
             {
+                PropertiesFile propertiesFile = (PropertiesFile) target;
                 propertiesFile.setLocation(replaceVariables(propertiesFile.getLocation()));
             }
-        }
-        Databases databases = profile.getDatabases();
-        if (databases != null)
-        {
-            for (Database database : databases.getDatabase())
+            else if (target instanceof Database)
             {
+                Database database = (Database) target;
                 database.setDriverClass(replaceVariables(database.getDriverClass()));
                 database.setJdbcUrl(replaceVariables(database.getJdbcUrl()));
                 database.setUsername(replaceVariables(database.getUsername()));

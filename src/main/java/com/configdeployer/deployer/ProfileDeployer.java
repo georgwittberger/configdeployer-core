@@ -9,8 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.configdeployer.binding.ConfigProfile;
-import com.configdeployer.binding.ConfigProfile.Databases;
-import com.configdeployer.binding.ConfigProfile.PropertiesFiles;
 import com.configdeployer.binding.Database;
 import com.configdeployer.binding.PropertiesFile;
 import com.configdeployer.preparer.PreparerException;
@@ -107,11 +105,11 @@ public class ProfileDeployer
     protected boolean deployProfile(ConfigProfile profile) throws DeployerException
     {
         boolean success = true;
-        PropertiesFiles propertiesFiles = profile.getPropertiesFiles();
-        if (propertiesFiles != null)
+        for (Object target : profile.getPropertiesFileOrDatabase())
         {
-            for (PropertiesFile propertiesFile : propertiesFiles.getPropertiesFile())
+            if (target instanceof PropertiesFile)
             {
+                PropertiesFile propertiesFile = (PropertiesFile) target;
                 try
                 {
                     new PropertiesFileDeployer(propertiesFile).deploy();
@@ -119,15 +117,12 @@ public class ProfileDeployer
                 catch (DeployerException e)
                 {
                     success = false;
-                    logger.error("Could not deploy properties file configuration: " + propertiesFile.getLocation(), e);
+                    logger.error("Could not deploy change to properties file: " + propertiesFile.getLocation(), e);
                 }
             }
-        }
-        Databases databases = profile.getDatabases();
-        if (databases != null)
-        {
-            for (Database database : databases.getDatabase())
+            else if (target instanceof Database)
             {
+                Database database = (Database) target;
                 try
                 {
                     new DatabaseDeployer(database).deploy();
@@ -135,7 +130,7 @@ public class ProfileDeployer
                 catch (DeployerException e)
                 {
                     success = false;
-                    logger.error("Could not deploy database configuration: " + database.getJdbcUrl(), e);
+                    logger.error("Could not deploy change to database: " + database.getJdbcUrl(), e);
                 }
             }
         }
