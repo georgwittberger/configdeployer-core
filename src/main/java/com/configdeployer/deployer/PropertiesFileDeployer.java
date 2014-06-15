@@ -368,7 +368,7 @@ public class PropertiesFileDeployer
                         condition.getValueMatches());
                 return false;
             }
-            else if (StringUtils.isNotBlank(condition.getValueNotEquals())
+            else if (condition.getValueNotEquals() != null
                     && StringUtils.equals(propertyValue, condition.getValueNotEquals()))
             {
                 logger.info("{} action for property '{}' in file '{}' is skipped because current value equals '{}'.",
