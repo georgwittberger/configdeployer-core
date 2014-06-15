@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.configdeployer.binding.ConfigProfile;
-import com.configdeployer.binding.ProfileUnmarshaller;
+import com.configdeployer.binding.ProfileMarshaller;
 
 public class ProfileProvider
 {
@@ -28,7 +28,7 @@ public class ProfileProvider
         try
         {
             profileInputStream = inputStreamProvider.getInputStream();
-            return ProfileUnmarshaller.getInstance().unmarshal(profileInputStream);
+            return ProfileMarshaller.getInstance().unmarshal(profileInputStream);
         }
         catch (IOException e)
         {
