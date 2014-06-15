@@ -4,7 +4,7 @@
 
     <groupId>com.configdeployer</groupId>
     <artifactId>configdeployer-core</artifactId>
-    <version>0.1.3-SNAPSHOT</version>
+    <version>0.1.3</version>
     <packaging>jar</packaging>
 
     <name>ConfigDeployer Core Module</name>
