@@ -22,6 +22,7 @@ public class ProfileDeployer
     private static final Logger logger = LoggerFactory.getLogger(ProfileDeployer.class);
     private final ProfileProvider profileProvider;
     private final List<ProfilePreparer> profilePreparers;
+    private boolean failFast;
 
     public ProfileDeployer(ProfileProvider profileProvider, ProfilePreparer... profilePreparers)
     {
@@ -66,6 +67,16 @@ public class ProfileDeployer
             logger.error("Profile '{}' could not be deployed successfully!", profile.getName());
         }
         return success;
+    }
+
+    public boolean isFailFast()
+    {
+        return failFast;
+    }
+
+    public void setFailFast(boolean failFast)
+    {
+        this.failFast = failFast;
     }
 
     protected ConfigProfile loadProfile() throws DeployerException
@@ -118,6 +129,10 @@ public class ProfileDeployer
                 {
                     success = false;
                     logger.error("Could not deploy change to properties file: " + propertiesFile.getLocation(), e);
+                    if (isFailFast())
+                    {
+                        throw e;
+                    }
                 }
             }
             else if (target instanceof Database)
@@ -131,6 +146,10 @@ public class ProfileDeployer
                 {
                     success = false;
                     logger.error("Could not deploy change to database: " + database.getJdbcUrl(), e);
+                    if (isFailFast())
+                    {
+                        throw e;
+                    }
                 }
             }
         }
